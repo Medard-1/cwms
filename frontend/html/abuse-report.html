@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Report Abuse — CWMS</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        .urgency-selector { display: flex; gap: 10px; margin-top: 6px; }
+        .urgency-btn {
+            flex: 1; padding: 10px; border-radius: 10px; border: 2px solid var(--border);
+            background: white; cursor: pointer; font-family: 'Inter', sans-serif;
+            font-size: 13px; font-weight: 600; transition: var(--transition); text-align: center;
+        }
+        .urgency-btn.low.selected { border-color: #06b6d4; background: #e0f2fe; color: #0e7490; }
+        .urgency-btn.normal.selected { border-color: #f59e0b; background: #fef3c7; color: #92400e; }
+        .urgency-btn.high.selected { border-color: #ef4444; background: #fee2e2; color: #991b1b; }
+        .urgency-btn.critical.selected { border-color: #7c3aed; background: #ede9fe; color: #5b21b6; }
+        .urgency-btn:hover { border-color: var(--primary); }
+        .abuse-type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px; }
+        .abuse-type-btn {
+            padding: 12px; border-radius: 10px; border: 2px solid var(--border);
+            background: white; cursor: pointer; font-family: 'Inter', sans-serif;
+            font-size: 13px; font-weight: 500; transition: var(--transition); text-align: center;
+        }
+        .abuse-type-btn.selected { border-color: var(--primary); background: #ede9fe; color: var(--primary); }
+        .abuse-type-btn:hover { border-color: var(--primary); }
+        .step-indicator { display: flex; align-items: center; gap: 8px; margin-bottom: 28px; }
+        .step { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-muted); }
+        .step.active { color: var(--primary); font-weight: 600; }
+        .step.done { color: var(--success); }
+        .step-num {
+            width: 26px; height: 26px; border-radius: 50%; border: 2px solid currentColor;
+            display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700;
+        }
+        .step-divider { flex: 1; height: 2px; background: var(--border); }
+        .success-card { text-align: center; padding: 48px 24px; }
+        .success-card .success-icon { font-size: 56px; margin-bottom: 16px; }
+        .success-card h2 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+        .success-card p { color: var(--text-muted); margin-bottom: 24px; }
+    </style>
+</head>
+<body>
+<div class="layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <div class="brand-icon">🛡️</div>
+            <div class="brand-text"><h2>CWMS</h2><span>Welfare System</span></div>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="nav-section-title">Main</div>
+            <a href="dashboard.html" class="nav-item"><span class="nav-icon">📊</span> Dashboard</a>
+            <a href="register.html" class="nav-item"><span class="nav-icon">👶</span> Children</a>
+            <a href="health.html" class="nav-item"><span class="nav-icon">🏥</span> Health Records</a>
+            <a href="education.html" class="nav-item"><span class="nav-icon">📚</span> Education</a>
+            <div class="nav-section-title">Management</div>
+            <a href="report.html" class="nav-item"><span class="nav-icon">📋</span> Cases & Reports</a>
+            <a href="abuse-report.html" class="nav-item active"><span class="nav-icon">🚨</span> Report Abuse</a>
+            <div id="users-nav-section" style="display:none">
+                <div class="nav-section-title">System</div>
+                <a href="users.html" class="nav-item"><span class="nav-icon">👥</span> Users</a>
+            </div>
+        </nav>
+        <div class="sidebar-footer">
+            <a href="index.html" class="nav-item" onclick="logout()"><span class="nav-icon">🚪</span> Logout</a>
+        </div>
+    </aside>
+
+    <div class="main">
+        <div class="topbar">
+            <div class="topbar-left">
+                <h1>Report Abuse / Neglect</h1>
+                <p>Submit a formal child abuse or neglect report</p>
+            </div>
+            <div class="topbar-right">
+                <div class="avatar" id="topbar-avatar">A</div>
+            </div>
+        </div>
+
+        <div class="content">
+            <!-- Step Indicator -->
+            <div class="step-indicator">
+                <div class="step active" id="step-1"><div class="step-num">1</div> Child & Type</div>
+                <div class="step-divider"></div>
+                <div class="step" id="step-2"><div class="step-num">2</div> Details & Urgency</div>
+                <div class="step-divider"></div>
+                <div class="step" id="step-3"><div class="step-num">3</div> Assignment</div>
+            </div>
+
+            <!-- FORM CARD -->
+            <div class="card" id="form-card">
+                <div class="card-body">
+
+                    <!-- STEP 1: Child & Abuse Type -->
+                    <div id="section-1">
+                        <div class="form-group">
+                            <label>Select Child *</label>
+                            <select id="r-child" class="form-control">
+                                <option value="">Loading children...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Type of Abuse / Concern *</label>
+                            <div class="abuse-type-grid" id="abuse-type-grid">
+                                <button class="abuse-type-btn" onclick="selectType(this,'Abuse')">⚠️ Physical Abuse</button>
+                                <button class="abuse-type-btn" onclick="selectType(this,'Neglect')">🚫 Neglect</button>
+                                <button class="abuse-type-btn" onclick="selectType(this,'Abandonment')">🏚️ Abandonment</button>
+                                <button class="abuse-type-btn" onclick="selectType(this,'Family Crisis')">👨‍👩‍👧 Family Crisis</button>
+                                <button class="abuse-type-btn" onclick="selectType(this,'Medical Emergency')">🏥 Medical Emergency</button>
+                                <button class="abuse-type-btn" onclick="selectType(this,'Educational Concern')">📚 Educational Concern</button>
+                                <button class="abuse-type-btn" onclick="selectType(this,'Other')">📝 Other</button>
+                            </div>
+                            <input type="hidden" id="r-type">
+                        </div>
+                        <div style="display:flex;justify-content:flex-end;margin-top:8px;">
+                            <button class="btn btn-primary" onclick="goStep(2)">Next →</button>
+                        </div>
+                    </div>
+
+                    <!-- STEP 2: Details & Urgency -->
+                    <div id="section-2" style="display:none;">
+                        <div class="form-group">
+                            <label>Urgency Level *</label>
+                            <div class="urgency-selector">
+                                <button class="urgency-btn low" onclick="selectUrgency(this,'Low')">🟢 Low</button>
+                                <button class="urgency-btn normal" onclick="selectUrgency(this,'Normal')">🟡 Normal</button>
+                                <button class="urgency-btn high" onclick="selectUrgency(this,'High')">🔴 High</button>
+                                <button class="urgency-btn critical" onclick="selectUrgency(this,'Critical')">🚨 Critical</button>
+                            </div>
+                            <input type="hidden" id="r-urgency" value="Normal">
+                        </div>
+                        <div class="form-group">
+                            <label>Detailed Description *</label>
+                            <textarea id="r-desc" class="form-control" rows="5"
+                                placeholder="Describe the situation in detail — what happened, when, where, and any witnesses..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Reported By *</label>
+                            <input type="text" id="r-reporter" class="form-control"
+                                placeholder="Your name or organisation">
+                        </div>
+                        <div style="display:flex;justify-content:space-between;margin-top:8px;">
+                            <button class="btn btn-outline" onclick="goStep(1)">← Back</button>
+                            <button class="btn btn-primary" onclick="goStep(3)">Next →</button>
+                        </div>
+                    </div>
+
+                    <!-- STEP 3: Assignment -->
+                    <div id="section-3" style="display:none;">
+                        <div class="alert alert-warning">
+                            ⚠️ Assigning this case to a social worker ensures it is tracked and followed up promptly.
+                        </div>
+                        <div class="form-group">
+                            <label>Assign to Social Worker</label>
+                            <select id="r-assigned" class="form-control">
+                                <option value="">Unassigned (assign later)</option>
+                            </select>
+                        </div>
+
+                        <!-- Summary -->
+                        <div class="card" style="background:var(--body-bg);border:none;margin-top:16px;">
+                            <div class="card-body">
+                                <p style="font-size:13px;font-weight:600;margin-bottom:12px;color:var(--text-muted);">REPORT SUMMARY</p>
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:14px;">
+                                    <div><span style="color:var(--text-muted);">Child:</span> <strong id="sum-child">—</strong></div>
+                                    <div><span style="color:var(--text-muted);">Type:</span> <strong id="sum-type">—</strong></div>
+                                    <div><span style="color:var(--text-muted);">Urgency:</span> <strong id="sum-urgency">—</strong></div>
+                                    <div><span style="color:var(--text-muted);">Reported By:</span> <strong id="sum-reporter">—</strong></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="display:flex;justify-content:space-between;margin-top:16px;">
+                            <button class="btn btn-outline" onclick="goStep(2)">← Back</button>
+                            <button class="btn btn-danger" onclick="submitReport()" style="padding:12px 32px;">
+                                🚨 Submit Report
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- SUCCESS STATE -->
+            <div class="card" id="success-card" style="display:none;">
+                <div class="success-card">
+                    <div class="success-icon">✅</div>
+                    <h2>Report Submitted Successfully</h2>
+                    <p>The abuse report has been recorded and a High-priority alert has been generated.<br>
+                       The assigned social worker will be notified.</p>
+                    <div style="display:flex;gap:12px;justify-content:center;">
+                        <a href="report.html" class="btn btn-primary">View All Cases</a>
+                        <button class="btn btn-outline" onclick="resetForm()">Submit Another Report</button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+const API = 'http://localhost:3000/api';
+let children = [], users = [], selectedType = '', selectedUrgency = 'Normal';
+
+async function init() {
+    const stored = localStorage.getItem('cwms_user');
+    if (stored) {
+        const u = JSON.parse(stored);
+        document.getElementById('topbar-avatar').textContent = u.full_name[0].toUpperCase();
+        document.getElementById('r-reporter').value = u.full_name;
+        if (u.role === 'admin') document.getElementById('users-nav-section').style.display = 'block';
+    }
+
+    try {
+        [children, users] = await Promise.all([
+            fetch(`${API}/children`).then(r => r.json()),
+            fetch(`${API}/auth/users`, {
+                headers: {'Authorization': 'Bearer ' + localStorage.getItem('cwms_token')}
+            }).then(r => r.json()),
+        ]);
+
+        document.getElementById('r-child').innerHTML =
+            '<option value="">Select child...</option>' +
+            children.map(c => `<option value="${c.id}">${c.name} (Age ${c.age})</option>`).join('');
+
+        document.getElementById('r-assigned').innerHTML =
+            '<option value="">Unassigned (assign later)</option>' +
+            users.map(u => `<option value="${u.id}">${u.full_name} — ${u.role}</option>`).join('');
+    } catch {
+        showToast('Failed to load data', 'error');
+    }
+}
+
+function selectType(btn, type) {
+    document.querySelectorAll('.abuse-type-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    selectedType = type;
+    document.getElementById('r-type').value = type;
+}
+
+function selectUrgency(btn, level) {
+    document.querySelectorAll('.urgency-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    selectedUrgency = level;
+    document.getElementById('r-urgency').value = level;
+}
+
+function goStep(step) {
+    // Validate before moving forward
+    if (step === 2) {
+        if (!document.getElementById('r-child').value) {
+            showToast('Please select a child', 'error'); return;
+        }
+        if (!selectedType) {
+            showToast('Please select the type of abuse/concern', 'error'); return;
+        }
+    }
+    if (step === 3) {
+        if (!document.getElementById('r-desc').value.trim()) {
+            showToast('Please provide a description', 'error'); return;
+        }
+        if (!document.getElementById('r-reporter').value.trim()) {
+            showToast('Please enter who is reporting', 'error'); return;
+        }
+        // Populate summary
+        const childSel = document.getElementById('r-child');
+        document.getElementById('sum-child').textContent =
+            childSel.options[childSel.selectedIndex].text;
+        document.getElementById('sum-type').textContent = selectedType;
+        document.getElementById('sum-urgency').textContent = selectedUrgency;
+        document.getElementById('sum-reporter').textContent =
+            document.getElementById('r-reporter').value;
+    }
+
+    // Show/hide sections
+    [1, 2, 3].forEach(s => {
+        document.getElementById(`section-${s}`).style.display = s === step ? 'block' : 'none';
+        const stepEl = document.getElementById(`step-${s}`);
+        stepEl.classList.remove('active', 'done');
+        if (s === step) stepEl.classList.add('active');
+        if (s < step) stepEl.classList.add('done');
+    });
+}
+
+async function submitReport() {
+    const childId = document.getElementById('r-child').value;
+    const assignedTo = document.getElementById('r-assigned').value;
+    const description = document.getElementById('r-desc').value.trim();
+    const reportedBy = document.getElementById('r-reporter').value.trim();
+
+    const data = {
+        child_id: childId,
+        case_type: selectedType,
+        description,
+        status: 'Open',
+        assigned_to: assignedTo || null,
+        urgency_level: selectedUrgency,
+        reported_by: reportedBy,
+    };
+
+    try {
+        const res = await fetch(`${API}/cases`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data),
+        });
+        if (!res.ok) { showToast('Failed to submit report', 'error'); return; }
+
+        document.getElementById('form-card').style.display = 'none';
+        document.getElementById('success-card').style.display = 'block';
+    } catch {
+        showToast('Server error. Please try again.', 'error');
+    }
+}
+
+function resetForm() {
+    document.getElementById('form-card').style.display = 'block';
+    document.getElementById('success-card').style.display = 'none';
+    document.getElementById('r-child').value = '';
+    document.getElementById('r-desc').value = '';
+    document.getElementById('r-urgency').value = 'Normal';
+    selectedType = '';
+    selectedUrgency = 'Normal';
+    document.querySelectorAll('.abuse-type-btn').forEach(b => b.classList.remove('selected'));
+    document.querySelectorAll('.urgency-btn').forEach(b => b.classList.remove('selected'));
+    goStep(1);
+}
+
+function showToast(msg, type = 'success') {
+    const c = document.getElementById('toast-container');
+    const t = document.createElement('div');
+    t.className = `toast ${type}`;
+    t.innerHTML = `<span>${type === 'success' ? '✅' : '❌'}</span> ${msg}`;
+    c.appendChild(t);
+    setTimeout(() => t.remove(), 3500);
+}
+
+function logout() {
+    localStorage.removeItem('cwms_token');
+    localStorage.removeItem('cwms_user');
+}
+
+init();
+</script>
+</body>
+</html>

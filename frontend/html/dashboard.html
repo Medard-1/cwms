@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard — CWMS</title>
+    <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body>
+<div class="layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <div class="brand-icon">🛡️</div>
+            <div class="brand-text"><h2>CWMS</h2><span>Welfare System</span></div>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="nav-section-title">Main</div>
+            <a href="dashboard.html" class="nav-item active"><span class="nav-icon">📊</span> Dashboard</a>
+            <a href="register.html" class="nav-item"><span class="nav-icon">👶</span> Children</a>
+            <a href="health.html" class="nav-item"><span class="nav-icon">🏥</span> Health Records</a>
+            <a href="education.html" class="nav-item"><span class="nav-icon">📚</span> Education</a>
+            <div class="nav-section-title">Management</div>
+            <a href="report.html" class="nav-item"><span class="nav-icon">📋</span> Cases & Reports</a>
+            <a href="abuse-report.html" class="nav-item"><span class="nav-icon">🚨</span> Report Abuse</a>
+            <a href="messages.html" class="nav-item"><span class="nav-icon">💬</span> Messages</a>
+            <div id="users-nav-section" style="display:none">
+                <div class="nav-section-title">System</div>
+                <a href="users.html" class="nav-item"><span class="nav-icon">👥</span> Users</a>
+            </div>
+        </nav>
+        <div class="sidebar-footer">
+            <a href="index.html" class="nav-item" onclick="logout()"><span class="nav-icon">🚪</span> Logout</a>
+        </div>
+    </aside>
+
+    <!-- Main -->
+    <div class="main">
+        <div class="topbar">
+            <div class="topbar-left">
+                <h1>Dashboard</h1>
+                <p id="date-display"></p>
+            </div>
+            <div class="topbar-right">
+                <button class="btn-icon" onclick="showAlerts()" title="Alerts">
+                    🔔 <span class="badge" id="alert-badge">0</span>
+                </button>
+                <div class="avatar" title="Admin">A</div>
+            </div>
+        </div>
+
+        <div class="content">
+            <!-- Stats -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon purple">👶</div>
+                    <div class="stat-info"><h3 id="stat-children">—</h3><p>Registered Children</p></div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon blue">📋</div>
+                    <div class="stat-info"><h3 id="stat-cases">—</h3><p>Active Cases</p></div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon green">🏥</div>
+                    <div class="stat-info"><h3 id="stat-health">—</h3><p>Health Records</p></div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon orange">📚</div>
+                    <div class="stat-info"><h3 id="stat-edu">—</h3><p>Education Records</p></div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon red">🔔</div>
+                    <div class="stat-info"><h3 id="stat-alerts">—</h3><p>Unread Alerts</p></div>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <!-- Recent Children -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Recent Children</h3>
+                        <a href="register.html" class="btn btn-primary btn-sm">+ Add Child</a>
+                    </div>
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Name</th><th>Age</th><th>Status</th></tr></thead>
+                            <tbody id="recent-children">
+                                <tr><td colspan="3"><div class="empty-state"><div class="empty-icon">⏳</div><p>Loading...</p></div></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Recent Cases -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Recent Cases</h3>
+                        <a href="report.html" class="btn btn-outline btn-sm">View All</a>
+                    </div>
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Child</th><th>Type</th><th>Status</th></tr></thead>
+                            <tbody id="recent-cases">
+                                <tr><td colspan="3"><div class="empty-state"><div class="empty-icon">⏳</div><p>Loading...</p></div></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Alerts Panel -->
+            <div class="card" style="margin-top:24px;" id="alerts-panel" style="display:none;">
+                <div class="card-header">
+                    <h3>🔔 Recent Alerts</h3>
+                    <button class="btn btn-outline btn-sm" onclick="markAllRead()">Mark All Read</button>
+                </div>
+                <div class="card-body" id="alerts-list">Loading...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+const API = 'http://localhost:3000/api';
+
+document.getElementById('date-display').textContent = new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+
+async function loadStats() {
+    try {
+        const [children, cases, health, edu, alerts] = await Promise.all([
+            fetch(`${API}/children`).then(r => r.json()),
+            fetch(`${API}/cases`).then(r => r.json()),
+            fetch(`${API}/health`).then(r => r.json()),
+            fetch(`${API}/education`).then(r => r.json()),
+            fetch(`${API}/alerts/unread`).then(r => r.json())
+        ]);
+        document.getElementById('stat-children').textContent = children.length || 0;
+        document.getElementById('stat-cases').textContent = cases.length || 0;
+        document.getElementById('stat-health').textContent = health.length || 0;
+        document.getElementById('stat-edu').textContent = edu.length || 0;
+        document.getElementById('stat-alerts').textContent = alerts.length || 0;
+        document.getElementById('alert-badge').textContent = alerts.length || 0;
+
+        // Recent children
+        const tbody = document.getElementById('recent-children');
+        if (!children.length) {
+            tbody.innerHTML = '<tr><td colspan="3"><div class="empty-state"><div class="empty-icon">👶</div><p>No children registered yet</p></div></td></tr>';
+        } else {
+            tbody.innerHTML = children.slice(0,5).map(c => `
+                <tr>
+                    <td><strong>${c.name}</strong></td>
+                    <td>${c.age} yrs</td>
+                    <td><span class="pill ${c.status==='Active'?'pill-green':'pill-gray'}">${c.status}</span></td>
+                </tr>`).join('');
+        }
+
+        // Recent cases
+        const ctbody = document.getElementById('recent-cases');
+        if (!cases.length) {
+            ctbody.innerHTML = '<tr><td colspan="3"><div class="empty-state"><div class="empty-icon">📋</div><p>No cases yet</p></div></td></tr>';
+        } else {
+            ctbody.innerHTML = cases.slice(0,5).map(c => `
+                <tr>
+                    <td>${c.child_name}</td>
+                    <td>${c.case_type}</td>
+                    <td><span class="pill ${c.status==='Open'?'pill-orange':'pill-green'}">${c.status}</span></td>
+                </tr>`).join('');
+        }
+
+        // Alerts
+        const alist = document.getElementById('alerts-list');
+        if (!alerts.length) {
+            alist.innerHTML = '<div class="empty-state"><div class="empty-icon">✅</div><h3>All clear!</h3><p>No unread alerts</p></div>';
+        } else {
+            alist.innerHTML = alerts.map(a => `
+                <div class="alert alert-${a.severity==='High'?'danger':a.severity==='Low'?'info':'warning'}" style="margin-bottom:10px;">
+                    <span>🔔</span>
+                    <div style="flex:1"><strong>${a.child_name}</strong>: ${a.message}</div>
+                    <button class="btn btn-sm btn-outline" onclick="markRead(${a.id})">✓</button>
+                </div>`).join('');
+        }
+    } catch (e) {
+        showToast('Could not connect to server. Is it running?', 'error');
+    }
+}
+
+function showAlerts() {
+    const panel = document.getElementById('alerts-panel');
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    panel.scrollIntoView({ behavior: 'smooth' });
+}
+
+async function markRead(id) {
+    await fetch(`${API}/alerts/${id}/read`, { method: 'PUT' });
+    loadStats();
+    showToast('Alert marked as read', 'success');
+}
+
+async function markAllRead() {
+    const alerts = await fetch(`${API}/alerts/unread`).then(r => r.json());
+    await Promise.all(alerts.map(a => fetch(`${API}/alerts/${a.id}/read`, { method: 'PUT' })));
+    loadStats();
+    showToast('All alerts marked as read', 'success');
+}
+
+function showToast(msg, type = 'success') {
+    const c = document.getElementById('toast-container');
+    const t = document.createElement('div');
+    t.className = `toast ${type}`;
+    t.innerHTML = `<span>${type==='success'?'✅':type==='error'?'❌':'⚠️'}</span> ${msg}`;
+    c.appendChild(t);
+    setTimeout(() => t.remove(), 3500);
+}
+
+loadStats();
+
+const _u = localStorage.getItem('cwms_user');
+if (_u && JSON.parse(_u).role === 'admin') document.getElementById('users-nav-section').style.display = 'block';
+
+function logout() { localStorage.removeItem('cwms_token'); localStorage.removeItem('cwms_user'); }
+</script>
+</body>
+</html>

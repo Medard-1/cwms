@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Education — CWMS</title>
+    <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body>
+<div class="layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <div class="brand-icon">🛡️</div>
+            <div class="brand-text"><h2>CWMS</h2><span>Welfare System</span></div>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="nav-section-title">Main</div>
+            <a href="dashboard.html" class="nav-item"><span class="nav-icon">📊</span> Dashboard</a>
+            <a href="register.html" class="nav-item"><span class="nav-icon">👶</span> Children</a>
+            <a href="health.html" class="nav-item"><span class="nav-icon">🏥</span> Health Records</a>
+            <a href="education.html" class="nav-item active"><span class="nav-icon">📚</span> Education</a>
+            <div class="nav-section-title">Management</div>
+            <a href="report.html" class="nav-item"><span class="nav-icon">📋</span> Cases & Reports</a>
+            <a href="abuse-report.html" class="nav-item"><span class="nav-icon">🚨</span> Report Abuse</a>
+            <a href="messages.html" class="nav-item"><span class="nav-icon">💬</span> Messages</a>
+            <div id="users-nav-section" style="display:none">
+                <div class="nav-section-title">System</div>
+                <a href="users.html" class="nav-item"><span class="nav-icon">👥</span> Users</a>
+            </div>
+        </nav>
+        <div class="sidebar-footer">
+            <a href="index.html" class="nav-item" onclick="logout()"><span class="nav-icon">🚪</span> Logout</a>
+        </div>
+    </aside>
+
+    <div class="main">
+        <div class="topbar">
+            <div class="topbar-left">
+                <h1>Education Records</h1>
+                <p>Track school enrollment and academic performance</p>
+            </div>
+            <div class="topbar-right">
+                <button class="btn btn-primary" onclick="openModal()">+ Add Education Record</button>
+                <div class="avatar">A</div>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="card">
+                <div class="card-header">
+                    <h3>All Education Records</h3>
+                    <div class="search-bar">
+                        <span class="search-icon">🔍</span>
+                        <input type="text" id="search" placeholder="Search by child or school..." oninput="filterTable()">
+                    </div>
+                </div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr><th>#</th><th>Child</th><th>School</th><th>Grade</th><th>Performance</th><th>Year</th><th>Actions</th></tr>
+                        </thead>
+                        <tbody id="edu-table">
+                            <tr><td colspan="7"><div class="empty-state"><div class="empty-icon">⏳</div><p>Loading...</p></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 id="modal-title">Add Education Record</h3>
+            <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="rec-id">
+            <div class="form-group">
+                <label>Child *</label>
+                <select id="f-child" class="form-control"><option value="">Select child...</option></select>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>School Name *</label>
+                    <input type="text" id="f-school" class="form-control" placeholder="School name">
+                </div>
+                <div class="form-group">
+                    <label>Grade / Class *</label>
+                    <input type="text" id="f-grade" class="form-control" placeholder="e.g. Grade 5, Form 2">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Performance</label>
+                    <select id="f-performance" class="form-control">
+                        <option value="">Select...</option>
+                        <option>Excellent</option>
+                        <option>Good</option>
+                        <option>Average</option>
+                        <option>Below Average</option>
+                        <option>Poor</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Year *</label>
+                    <input type="number" id="f-year" class="form-control" placeholder="e.g. 2024" min="2000" max="2100">
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="saveRecord()">Save Record</button>
+        </div>
+    </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+const API = 'http://localhost:3000/api';
+let allRecords = [];
+
+const perfColor = { Excellent: 'pill-green', Good: 'pill-blue', Average: 'pill-orange', 'Below Average': 'pill-red', Poor: 'pill-red' };
+
+async function loadData() {
+    try {
+        const [records, children] = await Promise.all([
+            fetch(`${API}/education`).then(r => r.json()),
+            fetch(`${API}/children`).then(r => r.json())
+        ]);
+        allRecords = records;
+        const sel = document.getElementById('f-child');
+        sel.innerHTML = '<option value="">Select child...</option>' + children.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+        renderTable(allRecords);
+    } catch { showToast('Server connection failed', 'error'); }
+}
+
+function renderTable(data) {
+    const tbody = document.getElementById('edu-table');
+    if (!data.length) {
+        tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">📚</div><h3>No education records</h3><p>Click "+ Add Education Record" to begin</p></div></td></tr>';
+        return;
+    }
+    tbody.innerHTML = data.map(r => `
+        <tr>
+            <td><strong>#${r.id}</strong></td>
+            <td>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <div style="width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,#f59e0b,#ef4444);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:12px;">${r.child_name[0]}</div>
+                    ${r.child_name}
+                </div>
+            </td>
+            <td>🏫 ${r.school_name}</td>
+            <td><span class="pill pill-purple">${r.grade}</span></td>
+            <td><span class="pill ${perfColor[r.performance] || 'pill-gray'}">${r.performance || '—'}</span></td>
+            <td>${r.year}</td>
+            <td>
+                <button class="btn btn-sm btn-outline" onclick="editRecord(${r.id})" style="margin-right:6px;">✏️</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteRecord(${r.id})">🗑️</button>
+            </td>
+        </tr>`).join('');
+}
+
+function filterTable() {
+    const q = document.getElementById('search').value.toLowerCase();
+    renderTable(allRecords.filter(r => r.child_name.toLowerCase().includes(q) || r.school_name.toLowerCase().includes(q)));
+}
+
+function openModal(rec = null) {
+    document.getElementById('modal-title').textContent = rec ? 'Edit Education Record' : 'Add Education Record';
+    document.getElementById('rec-id').value = rec ? rec.id : '';
+    document.getElementById('f-child').value = rec ? rec.child_id : '';
+    document.getElementById('f-school').value = rec ? rec.school_name : '';
+    document.getElementById('f-grade').value = rec ? rec.grade : '';
+    document.getElementById('f-performance').value = rec ? rec.performance : '';
+    document.getElementById('f-year').value = rec ? rec.year : new Date().getFullYear();
+    document.getElementById('modal').classList.add('open');
+}
+
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+function editRecord(id) { openModal(allRecords.find(r => r.id === id)); }
+
+async function saveRecord() {
+    const id = document.getElementById('rec-id').value;
+    const data = {
+        child_id: document.getElementById('f-child').value,
+        school_name: document.getElementById('f-school').value.trim(),
+        grade: document.getElementById('f-grade').value.trim(),
+        performance: document.getElementById('f-performance').value,
+        year: parseInt(document.getElementById('f-year').value)
+    };
+    if (!data.child_id || !data.school_name || !data.grade || !data.year) {
+        showToast('Please fill all required fields', 'error'); return;
+    }
+    try {
+        const url = id ? `${API}/education/${id}` : `${API}/education`;
+        await fetch(url, { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        closeModal(); loadData();
+        showToast('Education record saved', 'success');
+    } catch { showToast('Failed to save', 'error'); }
+}
+
+async function deleteRecord(id) {
+    if (!confirm('Delete this education record?')) return;
+    await fetch(`${API}/education/${id}`, { method: 'DELETE' });
+    loadData(); showToast('Record deleted', 'success');
+}
+
+function showToast(msg, type = 'success') {
+    const c = document.getElementById('toast-container');
+    const t = document.createElement('div');
+    t.className = `toast ${type}`;
+    t.innerHTML = `<span>${type==='success'?'✅':'❌'}</span> ${msg}`;
+    c.appendChild(t);
+    setTimeout(() => t.remove(), 3500);
+}
+
+document.getElementById('modal').addEventListener('click', e => { if (e.target === document.getElementById('modal')) closeModal(); });
+loadData();
+
+const _u = localStorage.getItem('cwms_user');
+if (_u && JSON.parse(_u).role === 'admin') document.getElementById('users-nav-section').style.display = 'block';
+
+function logout() { localStorage.removeItem('cwms_token'); localStorage.removeItem('cwms_user'); }
+</script>
+</body>
+</html>
